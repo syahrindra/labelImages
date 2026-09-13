@@ -29,6 +29,8 @@ import './Canvas.css';
 
 interface CanvasProps {
   imageUrl: string | null;
+  onBoxDrawn?: (box: PixelBox) => void;
+  onImageLoaded?: (dims: Dimensions) => void;
 }
 
 const HANDLE_SIZE = 8; // Size of corner resize handles in canvas pixels
@@ -135,6 +137,7 @@ export function Canvas({ imageUrl }: CanvasProps) {
       // Auto-fit image in canvas on initial load
       const fit = calculateFitTransform(canvasDimensions, dims);
       setTransform(fit);
+      onImageLoaded?.(dims);
     };
 
     img.onerror = () => {
@@ -538,6 +541,7 @@ export function Canvas({ imageUrl }: CanvasProps) {
         addBox(newBox);
         selectBox(newBox.id);
         setIsDrawingMode(false); // Automatically return to select mode
+        onBoxDrawn?.(newBox);
       }
     }
 

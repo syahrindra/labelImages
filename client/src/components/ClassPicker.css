@@ -1,0 +1,113 @@
+.class-picker-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.class-picker-popover {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  width: 260px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.class-picker-header {
+  padding: 10px 12px 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.class-picker-input {
+  margin: 0 8px 8px 8px;
+  padding: 8px 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-size: 13px;
+  outline: none;
+}
+
+.class-picker-input:focus {
+  border-color: var(--color-accent);
+}
+
+.class-picker-list {
+  max-height: 200px;
+  overflow-y: auto;
+  list-style: none;
+  padding: 0 4px 6px 4px;
+}
+
+.class-picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.class-picker-item:hover,
+.class-picker-item.active {
+  background-color: var(--color-border);
+}
+
+.class-picker-item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.class-picker-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.class-picker-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.class-picker-enter-hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.class-picker-create {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  margin: 0 4px 6px 4px;
+  border-top: 1px solid var(--color-border);
+  font-size: 13px;
+  color: var(--color-accent);
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.class-picker-create:hover,
+.class-picker-create.active {
+  background: var(--color-border);
+}

@@ -1,0 +1,92 @@
+.app-footer {
+  height: 32px;
+  background-color: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.footer-shortcuts {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.footer-shortcut-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.footer-key {
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: monospace;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.footer-btn-help {
+  background: transparent;
+  border: none;
+  color: var(--color-accent);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.footer-btn-help:hover {
+  text-decoration: underline;
+}
+
+/* Shortcuts Modal */
+.shortcuts-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.shortcuts-modal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  width: 360px;
+  padding: 20px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+}
+
+.shortcuts-modal h3 {
+  font-size: 16px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.shortcuts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.shortcuts-table td {
+  padding: 6px 0;
+}
+
+.shortcuts-table td:first-child {
+  width: 110px;
+}
