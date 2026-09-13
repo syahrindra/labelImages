@@ -1,0 +1,34 @@
+:root {
+  /* Design Tokens from PRD */
+  --color-bg: #0f1115;
+  --color-surface: #171a21;
+  --color-border: #262b36;
+  --color-text: #e6e9ef;
+  --color-text-muted: #8b93a3;
+  --color-accent: #4f8cff;
+  --color-success: #34c98e;
+  --color-danger: #ef4444;
+
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+
+button, input {
+  font-family: inherit;
+  color: inherit;
+}
