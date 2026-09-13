@@ -2,10 +2,13 @@ import { useAnnotationStore } from '../store/annotationStore.js';
 import './Header.css';
 
 interface HeaderProps {
+  viewMode: 'gallery' | 'labeling';
+  onToggleView: () => void;
   onOpenFolder?: () => void;
 }
 
-export function Header({ onOpenFolder }: HeaderProps) {
+export function Header({ viewMode, onToggleView, onOpenFolder }: HeaderProps) {
+  const datasetDir = useAnnotationStore((state) => state.datasetDir);
   const images = useAnnotationStore((state) => state.images);
   const currentImageIndex = useAnnotationStore((state) => state.currentImageIndex);
   const saveStatus = useAnnotationStore((state) => state.saveStatus);
@@ -39,6 +42,17 @@ export function Header({ onOpenFolder }: HeaderProps) {
     <header className="app-header">
       <div className="header-left">
         <span className="header-title">labelImages</span>
+
+        {datasetDir && (
+          <button
+            className="header-action-btn"
+            onClick={onToggleView}
+            title={viewMode === 'labeling' ? 'Back to Gallery (Esc)' : 'Open Labeling Canvas'}
+          >
+            {viewMode === 'labeling' ? '◄ Gallery' : 'Canvas View ►'}
+          </button>
+        )}
+
         {onOpenFolder && (
           <button className="header-action-btn" onClick={onOpenFolder}>
             Open Folder
@@ -46,56 +60,68 @@ export function Header({ onOpenFolder }: HeaderProps) {
         )}
       </div>
 
-      <div className="header-center">
-        <button
-          className="header-nav-btn"
-          onClick={prevImage}
-          disabled={!canGoPrev}
-          title="Previous Image (A)"
-        >
-          ◄
-        </button>
+      {viewMode === 'labeling' ? (
+        <div className="header-center">
+          <button
+            className="header-nav-btn"
+            onClick={prevImage}
+            disabled={!canGoPrev}
+            title="Previous Image (A)"
+          >
+            ◄
+          </button>
 
-        {currentImage ? (
-          <div className="header-file-info">
-            <span className="header-filename">{currentImage.filename}</span>
-            <span className="header-file-counter">
-              · {currentImageIndex + 1}/{images.length}
-            </span>
-          </div>
-        ) : (
-          <span className="header-file-counter">No images loaded</span>
-        )}
+          {currentImage ? (
+            <div className="header-file-info">
+              <span className="header-filename">{currentImage.filename}</span>
+              <span className="header-file-counter">
+                · {currentImageIndex + 1}/{images.length}
+              </span>
+            </div>
+          ) : (
+            <span className="header-file-counter">No images loaded</span>
+          )}
 
-        <button
-          className="header-nav-btn"
-          onClick={nextImage}
-          disabled={!canGoNext}
-          title="Next Image (D)"
-        >
-          ►
-        </button>
-      </div>
+          <button
+            className="header-nav-btn"
+            onClick={nextImage}
+            disabled={!canGoNext}
+            title="Next Image (D)"
+          >
+            ►
+          </button>
+        </div>
+      ) : (
+        <div className="header-center">
+          <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
+            {datasetDir ? `Dataset: ${datasetDir}` : 'No dataset open'}
+          </span>
+        </div>
+      )}
 
       <div className="header-right">
-        {renderStatus()}
+        {viewMode === 'labeling' && renderStatus()}
 
-        <button
-          className="header-action-btn"
-          onClick={undo}
-          disabled={!canUndo}
-          title="Undo (Ctrl+Z)"
-        >
-          ↶ Undo
-        </button>
-        <button
-          className="header-action-btn"
-          onClick={redo}
-          disabled={!canRedo}
-          title="Redo (Ctrl+Shift+Z)"
-        >
-          ↷ Redo
-        </button>
+        {viewMode === 'labeling' && (
+          <>
+            <button
+              className="header-action-btn"
+              onClick={undo}
+              disabled={!canUndo}
+              title="Undo (Ctrl+Z)"
+            >
+              ↶ Undo
+            </button>
+            <button
+              className="header-action-btn"
+              onClick={redo}
+              disabled={!canRedo}
+              title="Redo (Ctrl+Shift+Z)"
+            >
+              ↷ Redo
+            </button>
+          </>
+        )}
       </div>
     </header>
   );

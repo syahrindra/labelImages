@@ -4,6 +4,7 @@ import { Header } from './components/Header.js';
 import { SidebarLeft } from './components/SidebarLeft.js';
 import { SidebarRight } from './components/SidebarRight.js';
 import { Canvas } from './components/Canvas.js';
+import { Gallery } from './components/Gallery.js';
 import { Footer } from './components/Footer.js';
 import { ClassPicker } from './components/ClassPicker.js';
 import {
@@ -25,10 +26,13 @@ export function App() {
   const classes = useAnnotationStore((state) => state.classes);
   const activeClassId = useAnnotationStore((state) => state.activeClassId);
   const boxes = useAnnotationStore((state) => state.boxes);
+  const selectedBoxId = useAnnotationStore((state) => state.selectedBoxId);
+  const isDrawingMode = useAnnotationStore((state) => state.isDrawingMode);
   const saveStatus = useAnnotationStore((state) => state.saveStatus);
 
   const setDatasetDir = useAnnotationStore((state) => state.setDatasetDir);
   const setImages = useAnnotationStore((state) => state.setImages);
+  const selectImageIndex = useAnnotationStore((state) => state.selectImageIndex);
   const setClasses = useAnnotationStore((state) => state.setClasses);
   const setActiveClassId = useAnnotationStore((state) => state.setActiveClassId);
   const addClass = useAnnotationStore((state) => state.addClass);
@@ -37,6 +41,9 @@ export function App() {
   const setSaveStatus = useAnnotationStore((state) => state.setSaveStatus);
   const nextImage = useAnnotationStore((state) => state.nextImage);
   const prevImage = useAnnotationStore((state) => state.prevImage);
+
+  // App View Mode: 'gallery' or 'labeling'
+  const [viewMode, setViewMode] = useState<'gallery' | 'labeling'>('gallery');
 
   // Folder Open Modal state
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
@@ -76,6 +83,7 @@ export function App() {
       }
 
       setIsFolderModalOpen(false);
+      setViewMode('gallery'); // Open in gallery overview
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to load dataset folder';
       setLoadError(msg);
@@ -92,7 +100,6 @@ export function App() {
     setSaveStatus('saving');
 
     try {
-      // Convert canvas pixel boxes back to normalized YOLO floats
       const yoloBoxes = boxes.map((box) =>
         pixelBoxToYolo(box, dims.width, dims.height)
       );
@@ -130,7 +137,6 @@ export function App() {
       .then((yoloAnnotations) => {
         if (!isSubscribed) return;
 
-        // If dimensions are known, convert right away; otherwise wait for image load
         if (naturalDimensions) {
           const pixelBoxes = yoloAnnotations.map((yolo, index) =>
             yoloToPixelBox(
@@ -158,7 +164,6 @@ export function App() {
     setNaturalDimensions(dims);
     activeImageRef.current.dims = dims;
 
-    // If annotations were fetched before image loaded, recalculate pixel boxes
     if (datasetDir && currentImage) {
       fetchAnnotations(datasetDir, currentImage.filename).then((yoloAnnotations) => {
         const pixelBoxes = yoloAnnotations.map((yolo, index) =>
@@ -174,9 +179,9 @@ export function App() {
     }
   };
 
-  // Keyboard navigation: 'd' for next, 'a' for previous
+  // Keyboard navigation and shortcuts
   useEffect(() => {
-    const handleNavKey = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
@@ -186,20 +191,39 @@ export function App() {
         return;
       }
 
-      if (e.key === 'd' || e.key === 'D') {
-        e.preventDefault();
-        performSave();
-        nextImage();
-      } else if (e.key === 'a' || e.key === 'A') {
-        e.preventDefault();
-        performSave();
-        prevImage();
+      if (viewMode === 'labeling') {
+        // d: next image with autosave
+        if (e.key === 'd' || e.key === 'D') {
+          e.preventDefault();
+          performSave();
+          nextImage();
+        }
+        // a: prev image with autosave
+        else if (e.key === 'a' || e.key === 'A') {
+          e.preventDefault();
+          performSave();
+          prevImage();
+        }
+        // Escape when idle returns to Gallery
+        else if (e.key === 'Escape' && !selectedBoxId && !isDrawingMode) {
+          performSave();
+          setViewMode('gallery');
+        }
       }
     };
 
-    window.addEventListener('keydown', handleNavKey);
-    return () => window.removeEventListener('keydown', handleNavKey);
-  }, [nextImage, prevImage, performSave, isClassPickerOpen, isFolderModalOpen]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    viewMode,
+    nextImage,
+    prevImage,
+    performSave,
+    selectedBoxId,
+    isDrawingMode,
+    isClassPickerOpen,
+    isFolderModalOpen,
+  ]);
 
   // When a box finishes drawing: open the ClassPicker
   const handleBoxDrawn = (box: PixelBox) => {
@@ -236,7 +260,6 @@ export function App() {
     }
     setActiveClassId(newClassId);
 
-    // Persist classes to backend classes.txt
     if (datasetDir) {
       const updatedNames = [...classes.map((c) => c.name), name.trim()];
       saveClasses(datasetDir, updatedNames).catch((err) =>
@@ -256,25 +279,44 @@ export function App() {
   return (
     <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* 1. Header Bar */}
-      <Header onOpenFolder={() => setIsFolderModalOpen(true)} />
+      <Header
+        viewMode={viewMode}
+        onToggleView={() => {
+          if (viewMode === 'labeling') performSave();
+          setViewMode((prev) => (prev === 'gallery' ? 'labeling' : 'gallery'));
+        }}
+        onOpenFolder={() => setIsFolderModalOpen(true)}
+      />
 
-      {/* 2. Main Three-Pane Workspace */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        {/* Left Pane: Files */}
-        <SidebarLeft />
+      {/* 2. Main Workspace (Contextual between Gallery and Labeling) */}
+      {viewMode === 'gallery' && datasetDir ? (
+        <Gallery
+          datasetDir={datasetDir}
+          images={images}
+          onSelectImage={(index) => {
+            selectImageIndex(index);
+            setViewMode('labeling');
+          }}
+          onChangeFolder={() => setIsFolderModalOpen(true)}
+        />
+      ) : (
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+          {/* Left Pane: Files */}
+          <SidebarLeft />
 
-        {/* Center Pane: Canvas */}
-        <div style={{ flex: 1, position: 'relative' }}>
-          <Canvas
-            imageUrl={currentImageUrl}
-            onBoxDrawn={handleBoxDrawn}
-            onImageLoaded={handleImageLoaded}
-          />
+          {/* Center Pane: Canvas */}
+          <div style={{ flex: 1, position: 'relative' }}>
+            <Canvas
+              imageUrl={currentImageUrl}
+              onBoxDrawn={handleBoxDrawn}
+              onImageLoaded={handleImageLoaded}
+            />
+          </div>
+
+          {/* Right Pane: Classes & Boxes */}
+          <SidebarRight />
         </div>
-
-        {/* Right Pane: Classes & Boxes */}
-        <SidebarRight />
-      </div>
+      )}
 
       {/* 3. Footer Bar */}
       <Footer />

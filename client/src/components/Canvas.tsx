@@ -52,7 +52,11 @@ type ActiveInteraction =
       initialBox: PixelBox;
     };
 
-export function Canvas({ imageUrl }: CanvasProps) {
+export function Canvas({
+  imageUrl,
+  onBoxDrawn,
+  onImageLoaded,
+}: CanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -611,3 +615,4 @@ export function Canvas({ imageUrl }: CanvasProps) {
     </div>
   );
 }
+
