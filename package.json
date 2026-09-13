@@ -11,6 +11,8 @@
     "dev:client": "npm run dev --workspace=client",
     "test:server": "npm run test --workspace=server",
     "test:client": "npm run test --workspace=client",
-    "test": "npm run test:server && npm run test:client"
+    "test": "npm run test:server && npm run test:client",
+    "build": "npm run build --workspace=server && npm run build --workspace=client",
+    "start": "node server/dist/index.js"
   }
 }

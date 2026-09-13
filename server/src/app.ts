@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import {
   scanDatasetImages,
   loadAnnotationsForImage,
@@ -9,6 +10,9 @@ import {
   loadClassLabels,
   saveClassLabels,
 } from './services/datasetService.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export function createApp(): express.Application {
   const app = express();
@@ -174,6 +178,22 @@ export function createApp(): express.Application {
     } catch (error) {
       next(error);
     }
+  });
+
+  // In production: Serve static assets from client/dist
+  const clientDistPath = path.resolve(__dirname, '../../client/dist');
+  app.use(express.static(clientDistPath));
+
+  // SPA fallback: Non-API requests serve index.html
+  app.get('*', (req: Request, res: Response, next: NextFunction) => {
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
+    res.sendFile(path.join(clientDistPath, 'index.html'), (err) => {
+      if (err) {
+        next();
+      }
+    });
   });
 
   // Global error handler
