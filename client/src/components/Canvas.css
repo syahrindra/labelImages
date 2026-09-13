@@ -1,0 +1,63 @@
+.canvas-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: var(--color-bg);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.canvas-element {
+  display: block;
+  cursor: default;
+}
+
+.canvas-element.panning {
+  cursor: grab;
+}
+
+.canvas-element.is-panning {
+  cursor: grabbing;
+}
+
+.canvas-element.drawing {
+  cursor: crosshair;
+}
+
+/* Controls overlay in bottom corner */
+.canvas-zoom-controls {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  gap: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 4px;
+}
+
+.canvas-zoom-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.canvas-zoom-btn:hover {
+  background-color: var(--color-border);
+}
+
+.canvas-empty-state {
+  color: var(--color-text-muted);
+  font-size: 14px;
+  text-align: center;
+}
