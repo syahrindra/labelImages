@@ -1,15 +1,30 @@
-/// <reference types="vite/client" /> 
-
-import { useRef, useEffect, useState, useCallback, type MouseEvent, type WheelEvent } from 'react';
+import {
+  useRef,
+  useEffect,
+  useState,
+  useCallback,
+  type MouseEvent,
+  type WheelEvent,
+} from 'react';
 import { useAnnotationStore } from '../store/annotationStore.js';
 import {
   calculateFitTransform,
   canvasToImageCoords,
   imageToCanvasCoords,
   isPointInBox,
+  normalizeRect,
+  getHandleUnderPoint,
+  resizeBox,
+  moveBox,
   clamp,
 } from '../utils/coordinates.js';
-import { ViewTransform, Dimensions, Point } from '../types/annotation.js';
+import {
+  ViewTransform,
+  Dimensions,
+  Point,
+  PixelBox,
+  ResizeHandle,
+} from '../types/annotation.js';
 import './Canvas.css';
 
 interface CanvasProps {
@@ -17,6 +32,23 @@ interface CanvasProps {
 }
 
 const HANDLE_SIZE = 8; // Size of corner resize handles in canvas pixels
+
+type ActiveInteraction =
+  | {
+      type: 'draw';
+      startImagePoint: Point;
+      currentRect: { x: number; y: number; width: number; height: number };
+    }
+  | {
+      type: 'resize';
+      handle: ResizeHandle;
+      initialBox: PixelBox;
+    }
+  | {
+      type: 'move';
+      startImagePoint: Point;
+      initialBox: PixelBox;
+    };
 
 export function Canvas({ imageUrl }: CanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -44,12 +76,27 @@ export function Canvas({ imageUrl }: CanvasProps) {
   const [isPanning, setIsPanning] = useState<boolean>(false);
   const lastPanPoint = useRef<Point>({ x: 0, y: 0 });
 
+  // Current mouse interaction (drawing, resizing, or moving)
+  const [activeInteraction, setActiveInteraction] = useState<ActiveInteraction | null>(null);
+  const [hoverCursor, setHoverCursor] = useState<string>('default');
+
   // Zustand Store selectors
   const boxes = useAnnotationStore((state) => state.boxes);
   const selectedBoxId = useAnnotationStore((state) => state.selectedBoxId);
   const classes = useAnnotationStore((state) => state.classes);
+  const activeClassId = useAnnotationStore((state) => state.activeClassId);
   const isDrawingMode = useAnnotationStore((state) => state.isDrawingMode);
+
   const selectBox = useAnnotationStore((state) => state.selectBox);
+  const addBox = useAnnotationStore((state) => state.addBox);
+  const updateBox = useAnnotationStore((state) => state.updateBox);
+  const deleteSelectedBox = useAnnotationStore((state) => state.deleteSelectedBox);
+  const setIsDrawingMode = useAnnotationStore((state) => state.setIsDrawingMode);
+  const toggleDrawingMode = useAnnotationStore((state) => state.toggleDrawingMode);
+  const undo = useAnnotationStore((state) => state.undo);
+  const redo = useAnnotationStore((state) => state.redo);
+
+  const selectedBox = boxes.find((b) => b.id === selectedBoxId) || null;
 
   // 1. Keep canvas dimensions synchronized with its parent container
   useEffect(() => {
@@ -136,7 +183,7 @@ export function Canvas({ imageUrl }: CanvasProps) {
         renderHeight
       );
 
-      // Draw all bounding boxes
+      // Draw all existing bounding boxes
       for (const box of boxes) {
         const isSelected = box.id === selectedBoxId;
 
@@ -205,6 +252,29 @@ export function Canvas({ imageUrl }: CanvasProps) {
           }
         }
       }
+
+      // Draw active live preview box if user is currently dragging a new box
+      if (activeInteraction?.type === 'draw') {
+        const { currentRect } = activeInteraction;
+        const activeClassMeta = classes.find((c) => c.id === activeClassId);
+        const drawColor = activeClassMeta ? activeClassMeta.color : '#4f8cff';
+
+        const topLeft = imageToCanvasCoords(
+          { x: currentRect.x, y: currentRect.y },
+          transform
+        );
+        const drawWidth = currentRect.width * transform.scale;
+        const drawHeight = currentRect.height * transform.scale;
+
+        ctx.fillStyle = `${drawColor}33`; // 20% opacity
+        ctx.fillRect(topLeft.x, topLeft.y, drawWidth, drawHeight);
+
+        ctx.strokeStyle = drawColor;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]); // Dashed line for preview
+        ctx.strokeRect(topLeft.x, topLeft.y, drawWidth, drawHeight);
+        ctx.setLineDash([]); // Reset dashed line
+      }
     }
   }, [
     imageElement,
@@ -213,21 +283,55 @@ export function Canvas({ imageUrl }: CanvasProps) {
     boxes,
     selectedBoxId,
     classes,
+    activeClassId,
+    activeInteraction,
     canvasDimensions,
   ]);
 
-  // 4. Keyboard handlers for Spacebar Pan and Zoom Shortcuts (+, -, 0)
+  // 4. Keyboard shortcuts: w, space, del, esc, undo/redo
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept shortcuts if typing in an input
+      // Don't intercept shortcuts if user is typing in a text input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
 
+      // Space: pan mode
       if (e.code === 'Space') {
         setIsSpacePressed(true);
-      } else if (e.key === '0' && naturalDimensions) {
-        // Reset zoom to fit image
+      }
+      // w: toggle draw mode
+      else if (e.key === 'w' || e.key === 'W') {
+        toggleDrawingMode();
+      }
+      // Escape: deselect box or exit drawing mode
+      else if (e.key === 'Escape') {
+        setIsDrawingMode(false);
+        selectBox(null);
+        setActiveInteraction(null);
+      }
+      // Delete or Backspace: delete selected box
+      else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedBoxId) {
+          deleteSelectedBox();
+        }
+      }
+      // Undo: Cmd+Z or Ctrl+Z
+      else if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+      }
+      // Redo: Cmd+Shift+Z or Ctrl+Y
+      else if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || e.key === 'Y')) {
+        e.preventDefault();
+        redo();
+      }
+      // 0: reset zoom to fit
+      else if (e.key === '0' && naturalDimensions) {
         const fit = calculateFitTransform(canvasDimensions, naturalDimensions);
         setTransform(fit);
       }
@@ -246,7 +350,17 @@ export function Canvas({ imageUrl }: CanvasProps) {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [canvasDimensions, naturalDimensions]);
+  }, [
+    canvasDimensions,
+    naturalDimensions,
+    selectedBoxId,
+    toggleDrawingMode,
+    setIsDrawingMode,
+    selectBox,
+    deleteSelectedBox,
+    undo,
+    redo,
+  ]);
 
   // 5. Mouse Wheel Zoom centered on cursor
   const handleWheel = (e: WheelEvent) => {
@@ -258,7 +372,6 @@ export function Canvas({ imageUrl }: CanvasProps) {
 
     const canvasPoint = getCanvasPointFromEvent(e);
 
-    // Keep point under cursor invariant
     const newOffsetX =
       canvasPoint.x - (canvasPoint.x - transform.offsetX) * (newScale / transform.scale);
     const newOffsetY =
@@ -271,37 +384,70 @@ export function Canvas({ imageUrl }: CanvasProps) {
     });
   };
 
-  // 6. Mouse Event Handlers: Panning and Box Selection
+  // 6. Mouse Interaction Handlers: Panning, Drawing, Resizing, Moving
   const handleMouseDown = (e: MouseEvent) => {
     const canvasPoint = getCanvasPointFromEvent(e);
 
-    // Pan with spacebar or middle mouse click (button === 1)
+    // Pan with Space or Middle Click
     if (isSpacePressed || e.button === 1) {
       setIsPanning(true);
       lastPanPoint.current = canvasPoint;
       return;
     }
 
-    // Left click on canvas
-    if (e.button === 0 && !isDrawingMode && naturalDimensions) {
-      const imagePoint = canvasToImageCoords(canvasPoint, transform);
+    if (e.button !== 0 || !naturalDimensions) return; // Only process primary left clicks
 
-      // Hit-test: Check if user clicked inside an existing box (reverse order for top-most)
-      let clickedBoxId: string | null = null;
-      for (let i = boxes.length - 1; i >= 0; i--) {
-        if (isPointInBox(imagePoint, boxes[i])) {
-          clickedBoxId = boxes[i].id;
-          break;
-        }
+    const imagePoint = canvasToImageCoords(canvasPoint, transform);
+
+    // A. If in DRAWING MODE: start drawing a new box
+    if (isDrawingMode) {
+      setActiveInteraction({
+        type: 'draw',
+        startImagePoint: imagePoint,
+        currentRect: { x: imagePoint.x, y: imagePoint.y, width: 0, height: 0 },
+      });
+      return;
+    }
+
+    // B. Check if clicking on a RESIZE HANDLE of the selected box
+    if (selectedBox) {
+      const handleUnderCursor = getHandleUnderPoint(canvasPoint, selectedBox, transform);
+      if (handleUnderCursor) {
+        setActiveInteraction({
+          type: 'resize',
+          handle: handleUnderCursor,
+          initialBox: selectedBox,
+        });
+        return;
       }
 
-      selectBox(clickedBoxId);
+      // C. Check if clicking INSIDE the selected box to MOVE it
+      if (isPointInBox(imagePoint, selectedBox)) {
+        setActiveInteraction({
+          type: 'move',
+          startImagePoint: imagePoint,
+          initialBox: selectedBox,
+        });
+        return;
+      }
     }
+
+    // D. Hit-test: Check if user clicked on another box to select it
+    let clickedBoxId: string | null = null;
+    for (let i = boxes.length - 1; i >= 0; i--) {
+      if (isPointInBox(imagePoint, boxes[i])) {
+        clickedBoxId = boxes[i].id;
+        break;
+      }
+    }
+
+    selectBox(clickedBoxId);
   };
 
   const handleMouseMove = (e: MouseEvent) => {
     const canvasPoint = getCanvasPointFromEvent(e);
 
+    // Handle panning
     if (isPanning) {
       const dx = canvasPoint.x - lastPanPoint.current.x;
       const dy = canvasPoint.y - lastPanPoint.current.y;
@@ -312,11 +458,90 @@ export function Canvas({ imageUrl }: CanvasProps) {
         offsetX: prev.offsetX + dx,
         offsetY: prev.offsetY + dy,
       }));
+      return;
+    }
+
+    if (!naturalDimensions) return;
+    const imagePoint = canvasToImageCoords(canvasPoint, transform);
+
+    // 1. Process active interaction in progress
+    if (activeInteraction) {
+      if (activeInteraction.type === 'draw') {
+        const rect = normalizeRect(activeInteraction.startImagePoint, imagePoint);
+        setActiveInteraction({
+          ...activeInteraction,
+          currentRect: rect,
+        });
+      } else if (activeInteraction.type === 'resize') {
+        const resized = resizeBox(
+          activeInteraction.initialBox,
+          activeInteraction.handle,
+          imagePoint
+        );
+        updateBox(resized);
+      } else if (activeInteraction.type === 'move') {
+        const dx = imagePoint.x - activeInteraction.startImagePoint.x;
+        const dy = imagePoint.y - activeInteraction.startImagePoint.y;
+        const moved = moveBox(
+          activeInteraction.initialBox,
+          dx,
+          dy,
+          naturalDimensions.width,
+          naturalDimensions.height
+        );
+        updateBox(moved);
+      }
+      return;
+    }
+
+    // 2. Update hover cursor style when idle
+    if (isSpacePressed) {
+      setHoverCursor('grab');
+    } else if (isDrawingMode) {
+      setHoverCursor('crosshair');
+    } else if (selectedBox) {
+      const handle = getHandleUnderPoint(canvasPoint, selectedBox, transform);
+      if (handle === 'topLeft' || handle === 'bottomRight') {
+        setHoverCursor('nwse-resize');
+      } else if (handle === 'topRight' || handle === 'bottomLeft') {
+        setHoverCursor('nesw-resize');
+      } else if (isPointInBox(imagePoint, selectedBox)) {
+        setHoverCursor('move');
+      } else {
+        setHoverCursor('default');
+      }
+    } else {
+      setHoverCursor('default');
     }
   };
 
   const handleMouseUp = () => {
-    setIsPanning(false);
+    if (isPanning) {
+      setIsPanning(false);
+    }
+
+    // Commit newly drawn box
+    if (activeInteraction?.type === 'draw') {
+      const { currentRect } = activeInteraction;
+
+      // Only commit if larger than 5x5 pixels (prevents accidental micro-clicks)
+      if (currentRect.width >= 5 && currentRect.height >= 5) {
+        const newBox: PixelBox = {
+          id: Math.random().toString(36).substring(2, 9),
+          classId: activeClassId,
+          x: currentRect.x,
+          y: currentRect.y,
+          width: currentRect.width,
+          height: currentRect.height,
+        };
+
+        addBox(newBox);
+        selectBox(newBox.id);
+        setIsDrawingMode(false); // Automatically return to select mode
+      }
+    }
+
+    setActiveInteraction(null);
   };
 
   // Zoom control button handlers
@@ -341,14 +566,6 @@ export function Canvas({ imageUrl }: CanvasProps) {
     }
   };
 
-  const canvasCursorClass = isPanning
-    ? 'is-panning'
-    : isSpacePressed
-    ? 'panning'
-    : isDrawingMode
-    ? 'drawing'
-    : 'default';
-
   return (
     <div className="canvas-container" ref={containerRef}>
       {imageUrl ? (
@@ -356,7 +573,8 @@ export function Canvas({ imageUrl }: CanvasProps) {
           ref={canvasRef}
           width={canvasDimensions.width}
           height={canvasDimensions.height}
-          className={`canvas-element ${canvasCursorClass}`}
+          className="canvas-element"
+          style={{ cursor: isPanning ? 'grabbing' : hoverCursor }}
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}

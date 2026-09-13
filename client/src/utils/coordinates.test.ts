@@ -7,6 +7,9 @@ import {
   calculateFitTransform,
   isPointInBox,
   normalizeRect,
+  getHandleUnderPoint,
+  resizeBox,
+  moveBox,
 } from './coordinates.js';
 import { YoloAnnotation, PixelBox, ViewTransform } from '../types/annotation.js';
 
@@ -132,6 +135,72 @@ describe('coordinates utils', () => {
       expect(rect.y).toBe(50);
       expect(rect.width).toBe(200);
       expect(rect.height).toBe(150);
+    });
+  });
+
+  describe('getHandleUnderPoint', () => {
+    const box: PixelBox = { id: 'box-1', classId: 0, x: 100, y: 100, width: 200, height: 100 };
+    const transform: ViewTransform = { scale: 1.0, offsetX: 0, offsetY: 0 };
+
+    it('should detect top-left handle within hit radius', () => {
+      expect(getHandleUnderPoint({ x: 100, y: 100 }, box, transform)).toBe('topLeft');
+      expect(getHandleUnderPoint({ x: 103, y: 98 }, box, transform)).toBe('topLeft');
+    });
+
+    it('should detect bottom-right handle within hit radius', () => {
+      expect(getHandleUnderPoint({ x: 300, y: 200 }, box, transform)).toBe('bottomRight');
+    });
+
+    it('should return null when point is far from any handle', () => {
+      expect(getHandleUnderPoint({ x: 150, y: 150 }, box, transform)).toBeNull();
+    });
+  });
+
+  describe('resizeBox', () => {
+    const box: PixelBox = { id: 'box-1', classId: 0, x: 100, y: 100, width: 200, height: 100 };
+
+    it('should resize bottom-right corner correctly', () => {
+      const resized = resizeBox(box, 'bottomRight', { x: 350, y: 250 });
+
+      expect(resized.x).toBe(100);
+      expect(resized.y).toBe(100);
+      expect(resized.width).toBe(250);
+      expect(resized.height).toBe(150);
+    });
+
+    it('should resize top-left corner keeping bottom-right fixed', () => {
+      const resized = resizeBox(box, 'topLeft', { x: 50, y: 80 });
+
+      // Opposite corner is (300, 200)
+      expect(resized.x).toBe(50);
+      expect(resized.y).toBe(80);
+      expect(resized.width).toBe(250); // 300 - 50
+      expect(resized.height).toBe(120); // 200 - 80
+    });
+  });
+
+  describe('moveBox', () => {
+    const box: PixelBox = { id: 'box-1', classId: 0, x: 100, y: 100, width: 200, height: 100 };
+
+    it('should translate box position by delta', () => {
+      const moved = moveBox(box, 50, 30, 1000, 1000);
+
+      expect(moved.x).toBe(150);
+      expect(moved.y).toBe(130);
+      expect(moved.width).toBe(200);
+      expect(moved.height).toBe(100);
+    });
+
+    it('should clamp movement within image boundaries', () => {
+      // Try to move beyond left/top boundary
+      const movedMin = moveBox(box, -200, -200, 1000, 1000);
+      expect(movedMin.x).toBe(0);
+      expect(movedMin.y).toBe(0);
+
+      // Try to move beyond right/bottom boundary (1000 - 200 = 800, 1000 - 100 = 900)
+      const movedMax = moveBox(box, 1500, 1500, 1000, 1000);
+      expect(movedMax.x).toBe(800);
+      expect(movedMax.y).toBe(900);
     });
   });
 });

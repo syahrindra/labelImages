@@ -4,6 +4,7 @@ import {
   Point,
   Dimensions,
   ViewTransform,
+  ResizeHandle,
 } from '../types/annotation.js';
 
 /**
@@ -147,3 +148,92 @@ export function normalizeRect(
 
   return { x, y, width, height };
 }
+
+/**
+ * Detects whether a point in canvas coordinates is over one of the 4 corner handles of a selected box.
+ */
+export function getHandleUnderPoint(
+  canvasPoint: Point,
+  box: PixelBox,
+  transform: ViewTransform,
+  hitRadius: number = 8
+): ResizeHandle | null {
+  const topLeft = imageToCanvasCoords({ x: box.x, y: box.y }, transform);
+  const boxCanvasWidth = box.width * transform.scale;
+  const boxCanvasHeight = box.height * transform.scale;
+
+  const handles: { handle: ResizeHandle; point: Point }[] = [
+    { handle: 'topLeft', point: { x: topLeft.x, y: topLeft.y } },
+    { handle: 'topRight', point: { x: topLeft.x + boxCanvasWidth, y: topLeft.y } },
+    { handle: 'bottomLeft', point: { x: topLeft.x, y: topLeft.y + boxCanvasHeight } },
+    { handle: 'bottomRight', point: { x: topLeft.x + boxCanvasWidth, y: topLeft.y + boxCanvasHeight } },
+  ];
+
+  for (const { handle, point } of handles) {
+    const dx = Math.abs(canvasPoint.x - point.x);
+    const dy = Math.abs(canvasPoint.y - point.y);
+    if (dx <= hitRadius && dy <= hitRadius) {
+      return handle;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Resizes a box by dragging one of its 4 corner handles to currentImagePoint.
+ * Anchors the opposite corner and uses normalizeRect to handle flips.
+ */
+export function resizeBox(
+  box: PixelBox,
+  handle: ResizeHandle,
+  currentImagePoint: Point
+): PixelBox {
+  let anchorPoint: Point;
+
+  switch (handle) {
+    case 'topLeft':
+      anchorPoint = { x: box.x + box.width, y: box.y + box.height };
+      break;
+    case 'topRight':
+      anchorPoint = { x: box.x, y: box.y + box.height };
+      break;
+    case 'bottomLeft':
+      anchorPoint = { x: box.x + box.width, y: box.y };
+      break;
+    case 'bottomRight':
+      anchorPoint = { x: box.x, y: box.y };
+      break;
+  }
+
+  const rect = normalizeRect(anchorPoint, currentImagePoint);
+
+  return {
+    ...box,
+    x: rect.x,
+    y: rect.y,
+    width: Math.max(5, rect.width),
+    height: Math.max(5, rect.height),
+  };
+}
+
+/**
+ * Moves a box by (dx, dy) in image pixel coordinates, clamped within image bounds.
+ */
+export function moveBox(
+  box: PixelBox,
+  dx: number,
+  dy: number,
+  imgWidth: number,
+  imgHeight: number
+): PixelBox {
+  const newX = clamp(box.x + dx, 0, Math.max(0, imgWidth - box.width));
+  const newY = clamp(box.y + dy, 0, Math.max(0, imgHeight - box.height));
+
+  return {
+    ...box,
+    x: newX,
+    y: newY,
+  };
+}
+
