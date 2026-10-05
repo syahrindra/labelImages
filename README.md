@@ -12,7 +12,7 @@
 
 ## The Problem
 
-Inspired by the Python `labelImg` package, this tool keeps what works but upgrades the experience: a more appealing modern GUI, no need to predefine class lists before you start, no manual saves that risk losing progress, and no fiddly installation steps.
+Inspired by the classic `labelImg` package in Python, this tool keeps everything that made it great while solving its biggest pain points: a clean browser-based UI, no need to predefine class text files before you start, automatic background saves so you never lose progress, and zero installation friction.
 
 **labelImages** solves this for local workflows:
 - **Filesystem is the database:** Point at any folder of `.jpg` / `.png` images. No accounts, no database, no migrations.

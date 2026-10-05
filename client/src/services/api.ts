@@ -3,6 +3,7 @@ import {
   ClassLabel,
   YoloAnnotation,
 } from '../types/annotation.js';
+import { DirectoryBrowseResult } from '../types/directory.js';
 
 const API_BASE = '/api';
 
@@ -86,4 +87,17 @@ export async function saveAnnotations(
  */
 export function getImageFileUrl(dir: string, filename: string): string {
   return `${API_BASE}/images/${encodeURIComponent(filename)}/file?dir=${encodeURIComponent(dir)}`;
+}
+
+/**
+ * Browses subdirectories on the local host machine.
+ */
+export async function browseDirectory(dir?: string): Promise<DirectoryBrowseResult> {
+  const url = dir ? `${API_BASE}/browse?dir=${encodeURIComponent(dir)}` : `${API_BASE}/browse`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to browse directory');
+  }
+  return res.json();
 }

@@ -10,6 +10,7 @@ import {
   loadClassLabels,
   saveClassLabels,
 } from './services/datasetService.js';
+import { browseDirectory } from './services/directoryService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,6 +27,20 @@ export function createApp(): express.Application {
   // Health check endpoint
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok' });
+  });
+
+  /**
+   * GET /api/browse?dir=...
+   * Explores local directories for the in-app folder picker.
+   */
+  app.get('/api/browse', async (req: Request, res: Response) => {
+    try {
+      const targetDir = typeof req.query.dir === 'string' ? req.query.dir : undefined;
+      const result = await browseDirectory(targetDir);
+      res.json(result);
+    } catch {
+      res.status(404).json({ error: 'Directory not found or inaccessible' });
+    }
   });
 
   /**

@@ -25,6 +25,32 @@ describe('Express REST API Endpoints', () => {
     });
   });
 
+  describe('GET /api/browse', () => {
+    it('should browse a directory and return subfolders', async () => {
+      await fs.mkdir(path.join(tempDir, 'subfolder_1'));
+      await fs.mkdir(path.join(tempDir, 'subfolder_2'));
+
+      const res = await request(app).get(
+        `/api/browse?dir=${encodeURIComponent(tempDir)}`
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.body.currentPath).toBe(path.resolve(tempDir));
+      expect(res.body.directories).toHaveLength(2);
+      expect(res.body.directories[0].name).toBe('subfolder_1');
+      expect(res.body.drives).toBeInstanceOf(Array);
+    });
+
+    it('should return 404 if directory does not exist', async () => {
+      const res = await request(app).get(
+        `/api/browse?dir=${encodeURIComponent(path.join(tempDir, 'fake-dir'))}`
+      );
+
+      expect(res.status).toBe(404);
+      expect(res.body.error).toBeDefined();
+    });
+  });
+
   describe('Validation & Security', () => {
     it('should return 400 when dir query parameter is missing', async () => {
       const res = await request(app).get('/api/images');

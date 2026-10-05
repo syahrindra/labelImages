@@ -7,6 +7,7 @@ import { Canvas } from './components/Canvas.js';
 import { Gallery } from './components/Gallery.js';
 import { Footer } from './components/Footer.js';
 import { ClassPicker } from './components/ClassPicker.js';
+import { FolderBrowserModal } from './components/FolderBrowserModal.js';
 import {
   fetchImages,
   fetchClasses,
@@ -47,8 +48,6 @@ export function App() {
 
   // Folder Open Modal state
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
-  const [folderPathInput, setFolderPathInput] = useState('');
-  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Active image natural dimensions
   const [naturalDimensions, setNaturalDimensions] = useState<Dimensions | null>(null);
@@ -68,7 +67,6 @@ export function App() {
   // Open & load a dataset directory from backend
   const handleOpenDataset = async (dirToLoad: string) => {
     try {
-      setLoadError(null);
       const [fetchedImages, fetchedClasses] = await Promise.all([
         fetchImages(dirToLoad),
         fetchClasses(dirToLoad),
@@ -86,7 +84,8 @@ export function App() {
       setViewMode('gallery'); // Open in gallery overview
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to load dataset folder';
-      setLoadError(msg);
+      console.error('Error loading dataset:', msg);
+      alert(`Error loading folder: ${msg}`);
     }
   };
 
@@ -334,118 +333,14 @@ export function App() {
         }}
       />
 
-      {/* 5. Open Dataset Folder Modal */}
-      {(isFolderModalOpen || !datasetDir) && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1500,
-          }}
-          onClick={() => {
-            if (datasetDir) setIsFolderModalOpen(false);
-          }}
-        >
-          <div
-            style={{
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: '8px',
-              padding: '24px',
-              width: '420px',
-              boxShadow: '0 12px 30px rgba(0,0,0,0.6)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 style={{ fontSize: '18px', marginBottom: '8px' }}>Open Dataset Folder</h2>
-            <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '16px' }}>
-              Enter the absolute path to your folder of images and YOLO labels.
-            </p>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (folderPathInput.trim()) {
-                  handleOpenDataset(folderPathInput.trim());
-                }
-              }}
-            >
-              <input
-                autoFocus
-                type="text"
-                placeholder="e.g. D:/Projects/dataset or C:/Users/.../dataset"
-                value={folderPathInput}
-                onChange={(e) => setFolderPathInput(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  background: 'var(--color-bg)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '6px',
-                  color: 'var(--color-text)',
-                  fontSize: '13px',
-                  marginBottom: '12px',
-                  outline: 'none',
-                }}
-              />
-
-              {loadError && (
-                <div
-                  style={{
-                    color: 'var(--color-danger)',
-                    fontSize: '12px',
-                    marginBottom: '12px',
-                  }}
-                >
-                  {loadError}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                {datasetDir && (
-                  <button
-                    type="button"
-                    onClick={() => setIsFolderModalOpen(false)}
-                    style={{
-                      background: 'transparent',
-                      border: '1px solid var(--color-border)',
-                      color: 'var(--color-text)',
-                      borderRadius: '4px',
-                      padding: '8px 14px',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                    }}
-                  >
-                    Cancel
-                  </button>
-                )}
-                <button
-                  type="submit"
-                  style={{
-                    background: 'var(--color-accent)',
-                    border: 'none',
-                    color: '#ffffff',
-                    borderRadius: '4px',
-                    padding: '8px 16px',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    fontSize: '13px',
-                  }}
-                >
-                  Open Dataset
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* 5. In-App Visual Folder Browser Modal */}
+      <FolderBrowserModal
+        isOpen={isFolderModalOpen || !datasetDir}
+        initialPath={datasetDir}
+        onSelectFolder={handleOpenDataset}
+        onClose={() => setIsFolderModalOpen(false)}
+        canCancel={!!datasetDir}
+      />
     </div>
   );
 }
