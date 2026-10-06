@@ -85,6 +85,63 @@ describe('useAnnotationStore', () => {
     });
   });
 
+  describe('Class rename & delete', () => {
+    it('should block duplicate names when adding a class', () => {
+      const wasAdded = useAnnotationStore.getState().addClass('CAT', '#ffffff');
+
+      expect(wasAdded).toBe(false);
+      expect(useAnnotationStore.getState().classes).toHaveLength(2);
+    });
+
+    it('should rename a class and keep its id and color', () => {
+      const wasRenamed = useAnnotationStore.getState().renameClass(0, 'kitten');
+
+      expect(wasRenamed).toBe(true);
+
+      const classes = useAnnotationStore.getState().classes;
+      expect(classes[0].name).toBe('kitten');
+      expect(classes[0].id).toBe(0);
+      expect(classes[0].color).toBe('#3b82f6');
+    });
+
+    it('should block rename to an existing class name', () => {
+      const wasRenamed = useAnnotationStore.getState().renameClass(0, 'DOG');
+
+      expect(wasRenamed).toBe(false);
+      expect(useAnnotationStore.getState().classes[0].name).toBe('cat');
+    });
+
+    it('should delete a class and reindex remaining ids', () => {
+      useAnnotationStore.setState({
+        classes: [
+          { id: 0, name: 'cat', color: '#111111' },
+          { id: 1, name: 'dog', color: '#222222' },
+          { id: 2, name: 'bird', color: '#333333' },
+        ],
+        activeClassId: 0,
+      });
+
+      useAnnotationStore.getState().deleteClass(0);
+
+      const classes = useAnnotationStore.getState().classes;
+      expect(classes).toHaveLength(2);
+      expect(classes[0].name).toBe('dog');
+      expect(classes[0].id).toBe(0);
+      expect(classes[0].color).toBe('#222222');
+      expect(classes[1].name).toBe('bird');
+      expect(classes[1].id).toBe(1);
+    });
+
+    it('should move active class when the active class is deleted', () => {
+      useAnnotationStore.setState({ activeClassId: 1 });
+
+      useAnnotationStore.getState().deleteClass(1);
+
+      expect(useAnnotationStore.getState().classes).toHaveLength(1);
+      expect(useAnnotationStore.getState().activeClassId).toBe(0);
+    });
+  });
+
   describe('Image navigation', () => {
     beforeEach(() => {
       useAnnotationStore.setState({

@@ -73,6 +73,43 @@
   overflow: hidden;
 }
 
+.sidebar-item-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sidebar-active-dot {
+  font-size: 11px;
+  color: var(--color-accent);
+}
+
+.sidebar-class-delete {
+  opacity: 0;
+}
+
+.sidebar-item:hover .sidebar-class-delete {
+  opacity: 1;
+}
+
+.sidebar-rename-input {
+  width: 100%;
+  background: var(--color-bg);
+  border: 1px solid var(--color-accent);
+  border-radius: 4px;
+  color: var(--color-text);
+  padding: 2px 6px;
+  font-size: 12px;
+  outline: none;
+}
+
+.sidebar-form-error {
+  padding: 6px 12px;
+  color: var(--color-danger);
+  font-size: 12px;
+}
+
 .sidebar-item-index {
   color: var(--color-text-muted);
   font-size: 11px;

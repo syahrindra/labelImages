@@ -34,7 +34,9 @@ interface AnnotationState {
 
   setClasses: (classes: ClassLabel[]) => void;
   setActiveClassId: (id: number) => void;
-  addClass: (name: string, color: string) => void;
+  addClass: (name: string, color: string) => boolean;
+  renameClass: (id: number, name: string) => boolean;
+  deleteClass: (id: number) => void;
   updateClassColor: (id: number, color: string) => void;
 
   setBoxes: (boxes: PixelBox[]) => void;
@@ -107,14 +109,105 @@ export const useAnnotationStore = create<AnnotationState>((set, get) => ({
 
   addClass: (name, color) => {
     const { classes } = get();
+    const trimmed = name.trim();
+
+    if (trimmed.length === 0) {
+      return false;
+    }
+
+    const isDuplicate = classes.some((classLabel) => {
+      return classLabel.name.toLowerCase() === trimmed.toLowerCase();
+    });
+
+    if (isDuplicate) {
+      return false;
+    }
+
     const newClass: ClassLabel = {
       id: classes.length,
-      name: name,
+      name: trimmed,
       color: color,
     };
+
     set({
       classes: [...classes, newClass],
       activeClassId: newClass.id,
+    });
+
+    return true;
+  },
+
+  renameClass: (id, name) => {
+    const { classes } = get();
+    const trimmed = name.trim();
+
+    if (trimmed.length === 0) {
+      return false;
+    }
+
+    const target = classes.find((classLabel) => {
+      return classLabel.id === id;
+    });
+
+    if (!target) {
+      return false;
+    }
+
+    const isDuplicate = classes.some((classLabel) => {
+      const isOtherClass = classLabel.id !== id;
+      const hasSameName = classLabel.name.toLowerCase() === trimmed.toLowerCase();
+      return isOtherClass && hasSameName;
+    });
+
+    if (isDuplicate) {
+      return false;
+    }
+
+    const nextClasses = classes.map((classLabel) => {
+      if (classLabel.id === id) {
+        return { ...classLabel, name: trimmed };
+      }
+
+      return classLabel;
+    });
+
+    set({ classes: nextClasses });
+
+    return true;
+  },
+
+  deleteClass: (id) => {
+    const { classes, activeClassId } = get();
+
+    const remaining = classes.filter((classLabel) => {
+      return classLabel.id !== id;
+    });
+
+    if (remaining.length === classes.length) {
+      return;
+    }
+
+    const nextClasses = remaining.map((classLabel, index) => {
+      return { ...classLabel, id: index };
+    });
+
+    let nextActiveClassId = activeClassId;
+
+    if (activeClassId === id) {
+      nextActiveClassId = 0;
+    }
+
+    if (activeClassId > id) {
+      nextActiveClassId = activeClassId - 1;
+    }
+
+    if (nextClasses.length === 0) {
+      nextActiveClassId = 0;
+    }
+
+    set({
+      classes: nextClasses,
+      activeClassId: nextActiveClassId,
     });
   },
 

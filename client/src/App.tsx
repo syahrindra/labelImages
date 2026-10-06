@@ -245,10 +245,26 @@ export function App() {
 
   // When user creates a new class in ClassPicker
   const handleCreateClass = async (name: string) => {
-    if (!name.trim()) return;
+    const trimmed = name.trim();
+
+    if (!trimmed) {
+      return;
+    }
+
+    const isDuplicate = classes.some((classLabel) => {
+      return classLabel.name.toLowerCase() === trimmed.toLowerCase();
+    });
+
+    if (isDuplicate) {
+      return;
+    }
 
     const newColor = getNextClassColor(classes.length);
-    addClass(name.trim(), newColor);
+    const wasAdded = addClass(trimmed, newColor);
+
+    if (!wasAdded) {
+      return;
+    }
 
     const newClassId = classes.length;
     if (targetBoxId) {
@@ -260,7 +276,7 @@ export function App() {
     setActiveClassId(newClassId);
 
     if (datasetDir) {
-      const updatedNames = [...classes.map((c) => c.name), name.trim()];
+      const updatedNames = [...classes.map((c) => c.name), trimmed];
       saveClasses(datasetDir, updatedNames).catch((err) =>
         console.error('Failed to save classes.txt:', err)
       );
