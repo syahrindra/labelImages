@@ -1,6 +1,10 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type MouseEvent } from 'react';
 import { useAnnotationStore } from '../store/annotationStore.js';
-import { getNextClassColor } from './../utils/colors.js';
+import {
+  CLASS_COLOR_PALETTE,
+  getNextClassColor,
+  withValidHexColorOrFallback,
+} from './../utils/colors.js';
 import './Sidebar.css';
 
 export function SidebarRight() {
@@ -8,6 +12,7 @@ export function SidebarRight() {
   const activeClassId = useAnnotationStore((state) => state.activeClassId);
   const setActiveClassId = useAnnotationStore((state) => state.setActiveClassId);
   const addClass = useAnnotationStore((state) => state.addClass);
+  const updateClassColor = useAnnotationStore((state) => state.updateClassColor);
 
   const boxes = useAnnotationStore((state) => state.boxes);
   const selectedBoxId = useAnnotationStore((state) => state.selectedBoxId);
@@ -17,16 +22,35 @@ export function SidebarRight() {
 
   const [isAddingClass, setIsAddingClass] = useState(false);
   const [newClassName, setNewClassName] = useState('');
+  const [newClassColor, setNewClassColor] = useState(() => {
+    return getNextClassColor(classes.length);
+  });
+
+  const openAddClassForm = () => {
+    setNewClassColor(getNextClassColor(classes.length));
+    setNewClassName('');
+    setIsAddingClass(true);
+  };
+
+  const closeAddClassForm = () => {
+    setNewClassName('');
+    setIsAddingClass(false);
+  };
 
   const handleAddClassSubmit = (e: FormEvent) => {
     e.preventDefault();
+
     const trimmed = newClassName.trim();
-    if (trimmed.length > 0) {
-      const color = getNextClassColor(classes.length);
-      addClass(trimmed, color);
-      setNewClassName('');
-      setIsAddingClass(false);
+
+    if (trimmed.length === 0) {
+      return;
     }
+
+    const fallbackColor = getNextClassColor(classes.length);
+    const finalColor = withValidHexColorOrFallback(newClassColor, fallbackColor);
+
+    addClass(trimmed, finalColor);
+    closeAddClassForm();
   };
 
   const handleClassClick = (classId: number) => {
@@ -41,6 +65,18 @@ export function SidebarRight() {
     }
   };
 
+  const handleExistingColorClick = (e: MouseEvent) => {
+    // Don't select the class row when opening the color picker.
+    e.stopPropagation();
+  };
+
+  const handleExistingColorChange = (classId: number, nextColor: string) => {
+    const fallbackColor = getNextClassColor(classId);
+    const finalColor = withValidHexColorOrFallback(nextColor, fallbackColor);
+
+    updateClassColor(classId, finalColor);
+  };
+
   return (
     <aside className="sidebar right">
       {/* 1. Classes Section */}
@@ -50,7 +86,7 @@ export function SidebarRight() {
           {!isAddingClass && (
             <button
               className="sidebar-btn-add"
-              onClick={() => setIsAddingClass(true)}
+              onClick={openAddClassForm}
               title="Add new class"
             >
               + Add
@@ -59,7 +95,10 @@ export function SidebarRight() {
         </div>
 
         {isAddingClass && (
-          <form onSubmit={handleAddClassSubmit} style={{ padding: '8px 10px', borderBottom: '1px solid var(--color-border)' }}>
+          <form
+            onSubmit={handleAddClassSubmit}
+            className="sidebar-add-class-form"
+          >
             <input
               autoFocus
               type="text"
@@ -67,19 +106,59 @@ export function SidebarRight() {
               value={newClassName}
               onChange={(e) => setNewClassName(e.target.value)}
               onBlur={() => {
-                if (newClassName.trim().length === 0) setIsAddingClass(false);
+                if (newClassName.trim().length === 0) {
+                  closeAddClassForm();
+                }
               }}
-              style={{
-                width: '100%',
-                background: 'var(--color-bg)',
-                border: '1px solid var(--color-accent)',
-                borderRadius: '4px',
-                color: 'var(--color-text)',
-                padding: '4px 8px',
-                fontSize: '12px',
-                outline: 'none',
-              }}
+              className="sidebar-add-class-input"
             />
+
+            <div className="sidebar-add-class-colors">
+              <div className="sidebar-swatches">
+                {CLASS_COLOR_PALETTE.map((paletteColor) => {
+                  const isChosen =
+                    paletteColor.toLowerCase() === newClassColor.toLowerCase();
+
+                  return (
+                    <button
+                      key={paletteColor}
+                      type="button"
+                      title={paletteColor}
+                      aria-label={`Use color ${paletteColor}`}
+                      className={`sidebar-swatch ${isChosen ? 'selected' : ''}`}
+                      style={{ backgroundColor: paletteColor }}
+                      onClick={() => setNewClassColor(paletteColor)}
+                    />
+                  );
+                })}
+              </div>
+
+              <label className="sidebar-custom-color">
+                <input
+                  type="color"
+                  value={newClassColor}
+                  aria-label="Choose custom class color"
+                  onChange={(e) => setNewClassColor(e.target.value)}
+                />
+                <span className="sidebar-custom-hex">{newClassColor}</span>
+              </label>
+            </div>
+
+            <div className="sidebar-add-class-actions">
+              <button
+                type="button"
+                className="sidebar-btn-cancel"
+                onClick={closeAddClassForm}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="sidebar-btn-create"
+              >
+                Create
+              </button>
+            </div>
           </form>
         )}
 
@@ -89,6 +168,7 @@ export function SidebarRight() {
           ) : (
             classes.map((c) => {
               const isActive = c.id === activeClassId;
+
               return (
                 <li
                   key={c.id}
@@ -96,16 +176,21 @@ export function SidebarRight() {
                   onClick={() => handleClassClick(c.id)}
                 >
                   <div className="sidebar-item-left">
-                    <span
-                      style={{
-                        width: '10px',
-                        height: '10px',
-                        borderRadius: '50%',
-                        backgroundColor: c.color,
-                        display: 'inline-block',
-                        flexShrink: 0,
-                      }}
-                    />
+                    <label
+                      title={`Change color for ${c.name}`}
+                      className="sidebar-color-dot"
+                      style={{ backgroundColor: c.color }}
+                      onClick={handleExistingColorClick}
+                    >
+                      <input
+                        type="color"
+                        value={c.color}
+                        aria-label={`Change color for ${c.name}`}
+                        className="sidebar-color-input"
+                        onClick={handleExistingColorClick}
+                        onChange={(e) => handleExistingColorChange(c.id, e.target.value)}
+                      />
+                    </label>
                     <span className="sidebar-item-label">{c.name}</span>
                   </div>
                   {isActive && <span style={{ fontSize: '11px', color: 'var(--color-accent)' }}>●</span>}

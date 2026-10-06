@@ -22,3 +22,42 @@ export function getClassColor(index: number): string {
 export function getNextClassColor(existingCount: number): string {
   return getClassColor(existingCount);
 }
+
+/**
+ * Checks whether a string is a valid 6-digit hex color like "#ef4444".
+ */
+export function isValidHexColor(value: string): boolean {
+  if (typeof value !== 'string') {
+    return false;
+  }
+
+  const trimmedValue = value.trim();
+
+  if (trimmedValue.length !== 7) {
+    return false;
+  }
+
+  if (trimmedValue.startsWith('#') === false) {
+    return false;
+  }
+
+  const hexPart = trimmedValue.slice(1);
+  const hexPattern = /^[0-9a-fA-F]{6}$/;
+
+  return hexPattern.test(hexPart);
+}
+
+/**
+ * Returns the given color when it is a valid hex color,
+ * otherwise returns the provided fallback color.
+ */
+export function withValidHexColorOrFallback(
+  value: string,
+  fallback: string
+): string {
+  if (isValidHexColor(value)) {
+    return value.toLowerCase();
+  }
+
+  return fallback;
+}

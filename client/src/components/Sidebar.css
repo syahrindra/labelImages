@@ -127,3 +127,127 @@
   color: var(--color-text-muted);
   font-size: 12px;
 }
+
+.sidebar-add-class-form {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-add-class-input {
+  width: 100%;
+  background: var(--color-bg);
+  border: 1px solid var(--color-accent);
+  border-radius: 4px;
+  color: var(--color-text);
+  padding: 4px 8px;
+  font-size: 12px;
+  outline: none;
+}
+
+.sidebar-add-class-colors {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sidebar-swatches {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sidebar-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.sidebar-swatch:hover {
+  transform: scale(1.1);
+}
+
+.sidebar-swatch.selected {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+
+.sidebar-custom-color {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.sidebar-custom-color input[type='color'] {
+  width: 26px;
+  height: 22px;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.sidebar-custom-hex {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-family: monospace;
+}
+
+.sidebar-add-class-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.sidebar-btn-cancel {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sidebar-btn-create {
+  background: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  color: #ffffff;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sidebar-color-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  cursor: pointer;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.sidebar-color-dot:hover {
+  transform: scale(1.1);
+}
+
+.sidebar-color-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}

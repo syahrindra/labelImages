@@ -35,6 +35,7 @@ interface AnnotationState {
   setClasses: (classes: ClassLabel[]) => void;
   setActiveClassId: (id: number) => void;
   addClass: (name: string, color: string) => void;
+  updateClassColor: (id: number, color: string) => void;
 
   setBoxes: (boxes: PixelBox[]) => void;
   addBox: (box: PixelBox) => void;
@@ -115,6 +116,20 @@ export const useAnnotationStore = create<AnnotationState>((set, get) => ({
       classes: [...classes, newClass],
       activeClassId: newClass.id,
     });
+  },
+
+  updateClassColor: (id, color) => {
+    const { classes } = get();
+
+    const nextClasses = classes.map((classLabel) => {
+      if (classLabel.id === id) {
+        return { ...classLabel, color: color };
+      }
+
+      return classLabel;
+    });
+
+    set({ classes: nextClasses });
   },
 
   // Box Actions & History

@@ -134,7 +134,7 @@ export function ClassPicker({
             onClick={() => onCreateClass(query.trim())}
             onMouseEnter={() => setSelectedIndex(filteredClasses.length)}
           >
-            <span>+ Create "{query.trim()}"</span>
+            <span>+ Create &quot;{query.trim()}&quot;</span>
             <span className="class-picker-enter-hint">↵ enter</span>
           </div>
         )}
